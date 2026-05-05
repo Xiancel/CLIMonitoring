@@ -6,6 +6,7 @@ import (
 	"CLIMonitoring/internal/disk"
 	"CLIMonitoring/internal/gpu"
 	"CLIMonitoring/internal/ram"
+	"CLIMonitoring/internal/stats"
 	"context"
 	"fmt"
 	"os"
@@ -17,14 +18,26 @@ func Output() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	s := stats.NewStats()
+
 	fmt.Print("\033[?25l")
 	defer fmt.Print("\033[?25h")
 
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Print("\033[2J\033[H")
+
+			fmt.Println("+-------------------------------+")
+			fmt.Println("| Stop monitoring...            | ")
+			fmt.Println("| Thank for using CLIMonitoring | ")
+			fmt.Printf("| Uptime: %s                    |\n", s.Uptime().Truncate(time.Second))
+			fmt.Printf("| Max CPU: %.2f%%               |\n", s.MaxCPU)
+			fmt.Printf("| Min CPU: %.2f%%                |\n", s.MinCPU)
+			fmt.Println("+-------------------------------+")
+
+			time.Sleep(500 * time.Millisecond)
 			fmt.Print("\033[?25h")
-			fmt.Println("\nStopped monitoring.")
 			return
 		default:
 			fmt.Print("\033[H")
@@ -34,6 +47,7 @@ func Output() {
 				fmt.Println(err)
 				return
 			}
+			s.Update(usgcpu)
 			usgmem, err := ram.GetRAMUsage()
 			if err != nil {
 				fmt.Println(err)
@@ -54,15 +68,6 @@ func Output() {
 				fmt.Println(err)
 				return
 			}
-
-			// fmt.Printf(
-			// 	"\rCPU: %s || RAM: %s || DISK: %s || GPU: %s || %d°C  ",
-			// 	bar.ProgressBar(usgcpu),
-			// 	bar.ProgressBar(usgmem),
-			// 	bar.ProgressBar(usgdisk),
-			// 	bar.ProgressBar(usggpu),
-			// 	tempgpu,
-			// )
 
 			fmt.Println("+------------------------------------------------+")
 			fmt.Printf("| CPU   %s             |\n", bar.ProgressBar(usgcpu))
